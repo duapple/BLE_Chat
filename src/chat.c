@@ -30,10 +30,20 @@
 
 #include "lsm6dso.h"
 #include "sleep.h"
+#include "HWAdvanceFeatures.h"
+
+#if ENABLE_DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
 
 /* 0x01 represents printing calculated data, 0x02 represents printing raw data. */
 #define XENGINEINPUT_DATA   (0X01)
 #define RAW_DATA						(0X02)
+
+#define ENABLE_FREE_FALL	0
 
 /* External variables --------------------------------------------------------*/
 /* Private typedef -----------------------------------------------------------*/
@@ -67,8 +77,15 @@ MFX_CM0P_input_t xEngineInput;
 volatile uint32_t start_time = 0;
 volatile bool sensorTimer_expired = false;
 volatile uint8_t button_flag = 0;
+static uint8_t sleep_flag = 1;
+volatile uint8_t timer_irq_flag = 0;
+static volatile uint8_t timer_flag = 0;
+volatile uint8_t free_fall_notify = 0;
 
-static uint8_t sleep_flag = 0;
+volatile FeaturePresence xFeaturePresence;
+volatile FeatureNotification xFeatureNotification;
+volatile HardwareFeaturePresence xHardwareFeaturePresence;
+
 
 /** 
  * @brief  Handle of TX,RX  Characteristics.
@@ -117,7 +134,7 @@ uint8_t CHAT_DeviceInit(void) {
 	/* Configure Public address */
 	ret = aci_hal_write_config_data(CONFIG_DATA_PUBADDR_OFFSET, CONFIG_DATA_PUBADDR_LEN, bdaddr);
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("Setting BD_ADDR failed: 0x%02x\r\n", ret);
+		PRINTF("Setting BD_ADDR failed: 0x%02x\r\n", ret);
 		return ret;
 	}
 
@@ -127,53 +144,53 @@ uint8_t CHAT_DeviceInit(void) {
 	/* GATT Init */
 	ret = aci_gatt_init();
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("Error in aci_gatt_init(): 0x%02x\r\n", ret);
+		PRINTF("Error in aci_gatt_init(): 0x%02x\r\n", ret);
 		return ret;
 	} else {
-		printf("aci_gatt_init() --> SUCCESS\r\n");
+		PRINTF("aci_gatt_init() --> SUCCESS\r\n");
 	}
 
 	/* GAP Init */
 	ret = aci_gap_init(role, 0x00, 0x08, &service_handle, &dev_name_char_handle, &appearance_char_handle);
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("Error in aci_gap_init() 0x%02x\r\n", ret);
+		PRINTF("Error in aci_gap_init() 0x%02x\r\n", ret);
 		return ret;
 	} else {
-		printf("aci_gap_init() --> SUCCESS\r\n");
+		PRINTF("aci_gap_init() --> SUCCESS\r\n");
 	}
 
 	/* Set the device name */
 	ret = aci_gatt_update_char_value_ext(0, service_handle, dev_name_char_handle, 0, sizeof(name), 0, sizeof(name), name);
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("Error in Gatt Update characteristic value 0x%02x\r\n", ret);
+		PRINTF("Error in Gatt Update characteristic value 0x%02x\r\n", ret);
 		return ret;
 	} else {
-		printf("aci_gatt_update_char_value_ext() --> SUCCESS\r\n");
+		PRINTF("aci_gatt_update_char_value_ext() --> SUCCESS\r\n");
 	}
 
 #if  SERVER
 	ret = Add_Chat_Service();
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("Error in Add_Chat_Service 0x%02x\r\n", ret);
+		PRINTF("Error in Add_Chat_Service 0x%02x\r\n", ret);
 		return ret;
 	} else {
-		printf("Add_Chat_Service() --> SUCCESS\r\n");
+		PRINTF("Add_Chat_Service() --> SUCCESS\r\n");
 	}
 	
 	ret = Add_Chat_Service_test();
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("Error in Add_Chat_Service_test 0x%02x\r\n", ret);
+		PRINTF("Error in Add_Chat_Service_test 0x%02x\r\n", ret);
 		return ret;
 	} else {
-		printf("Add_Chat_Service_test() --> SUCCESS\r\n");
+		PRINTF("Add_Chat_Service_test() --> SUCCESS\r\n");
 	}
 
 #if ST_OTA_FIRMWARE_UPGRADE_SUPPORT     
 	ret = OTA_Add_Btl_Service();
 	if(ret == BLE_STATUS_SUCCESS)
-	printf("OTA service added successfully.\n");
+	PRINTF("OTA service added successfully.\n");
 	else
-	printf("Error while adding OTA service.\n");
+	PRINTF("Error while adding OTA service.\n");
 #endif /* ST_OTA_FIRMWARE_UPGRADE_SUPPORT */ 
 
 #endif
@@ -185,7 +202,7 @@ void Send_Data_Over_BLE(void) {
 	if (!APP_FLAG(SEND_DATA) || APP_FLAG(TX_BUFFER_FULL))
 		return;
 	
-	printf("cmd string is: %s", cmd);
+	PRINTF("cmd string is: %s", cmd);
 
 	while (cmd_buff_start < cmd_buff_end) {
 		uint32_t len = MIN(20, cmd_buff_end - cmd_buff_start);
@@ -267,7 +284,7 @@ void Make_Connection(void) {
 
 	ret = aci_gap_create_connection(0x4000, 0x4000, PUBLIC_ADDR, bdaddr, PUBLIC_ADDR, 40, 40, 0, 60, 2000, 2000);
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("Error while starting connection: 0x%04x\r\n", ret);
+		PRINTF("Error while starting connection: 0x%04x\r\n", ret);
 		Clock_Wait(100);
 	}
 
@@ -283,9 +300,9 @@ void Make_Connection(void) {
 
 	ret = aci_gap_set_discoverable(ADV_IND, 0, 0, PUBLIC_ADDR, NO_WHITE_LIST_USE, sizeof(local_name), local_name, 0, NULL, 0, 0);
 	if (ret != BLE_STATUS_SUCCESS)
-		printf("Error in aci_gap_set_discoverable(): 0x%02x\r\n", ret);
+		PRINTF("Error in aci_gap_set_discoverable(): 0x%02x\r\n", ret);
 	else
-		printf("aci_gap_set_discoverable() --> SUCCESS\r\n");
+		PRINTF("aci_gap_set_discoverable() --> SUCCESS\r\n");
 #endif
 }
 
@@ -317,7 +334,8 @@ void Init_Accelerometer_Gyroscope(void) {
 	lsm6dso_gy_power_mode_set(0, LSM6DSO_GY_NORMAL);
 	lsm6dso_xl_data_rate_set(0, LSM6DSO_XL_ODR_52Hz);
 	lsm6dso_gy_data_rate_set(0, LSM6DSO_GY_ODR_52Hz);
-	lsm6dso_xl_full_scale_set(0, LSM6DSO_2g);
+	//lsm6dso_xl_full_scale_set(0, LSM6DSO_2g);
+	lsm6dso_xl_full_scale_set(0, LSM6DSO_16g);
 	lsm6dso_gy_full_scale_set(0, LSM6DSO_2000dps);
 
 	lsm6dso_auto_increment_set(0, PROPERTY_ENABLE);
@@ -337,20 +355,22 @@ void Sensor_DeviceInit(void) {
 	lsm6dso_device_id_get(0, &who_am_I_8);
 	
 	if (who_am_I_8 == LSM6DSO_ID) {
-		printf("ID: 0x%2x\r\n", who_am_I_8);
-		printf("Sensor LSM6DSOW detected successful\r\n");
+		PRINTF("ID: 0x%2x\r\n", who_am_I_8);
+		PRINTF("Sensor LSM6DSOW detected successful\r\n");
 		
 		Init_Accelerometer_Gyroscope();
 		
 		lsm6dso_xl_data_rate_set(0, LSM6DSO_XL_ODR_OFF);
 		lsm6dso_gy_data_rate_set(0, LSM6DSO_GY_ODR_OFF);
+#if ENABLE_DEBUG_WIRELESS
 		SdkEvalLedOn(LED1);
 		SdkEvalLedOn(LED2);
 		SdkEvalLedOff(LED3);
-		printf("Sensor in low-power: OK\r\n");
+#endif
+		PRINTF("Sensor in low-power: OK\r\n");
 	}
 	else {
-		printf("Sensor LSM6DSO detected failed\r\n");
+		PRINTF("Sensor LSM6DSO detected failed\r\n");
 	}
 }
 
@@ -370,22 +390,22 @@ void acc_gyro_data_print(int8_t  format_flag) {
 		xEngineInput.gyro[1] = (((float) (angular_rate_mdps[1])) / 1000);
 		xEngineInput.gyro[2] = (((float) (angular_rate_mdps[2])) / 1000);
 		
-		printf("acceleration x = %f\r\n", xEngineInput.acc[0]);
-		printf("acceleration y = %f\r\n", xEngineInput.acc[1]);
-		printf("acceleration z = %f\r\n", xEngineInput.acc[2]);
-		printf("angular_rate x = %f\r\n", xEngineInput.gyro[0]);
-		printf("angular_rate y = %f\r\n", xEngineInput.gyro[1]);
-		printf("angular_rate z = %f\r\n", xEngineInput.gyro[2]);
-		printf("\r\n");
+		PRINTF("acceleration x = %f\r\n", xEngineInput.acc[0]);
+		PRINTF("acceleration y = %f\r\n", xEngineInput.acc[1]);
+		PRINTF("acceleration z = %f\r\n", xEngineInput.acc[2]);
+		PRINTF("angular_rate x = %f\r\n", xEngineInput.gyro[0]);
+		PRINTF("angular_rate y = %f\r\n", xEngineInput.gyro[1]);
+		PRINTF("angular_rate z = %f\r\n", xEngineInput.gyro[2]);
+		PRINTF("\r\n");
 	}
 	else {
-		printf("acceleration x = %d\r\n", acc_data.AXIS_X);
-		printf("acceleration y = %d\r\n", acc_data.AXIS_Y);
-		printf("acceleration z = %d\r\n", acc_data.AXIS_Z);
-		printf("angular_rate x = %d\r\n", gyro_data.AXIS_X);
-		printf("angular_rate y = %d\r\n", gyro_data.AXIS_Y);
-		printf("angular_rate z = %d\r\n", gyro_data.AXIS_Z);
-		printf("\r\n");
+		PRINTF("acceleration x = %d\r\n", acc_data.AXIS_X);
+		PRINTF("acceleration y = %d\r\n", acc_data.AXIS_Y);
+		PRINTF("acceleration z = %d\r\n", acc_data.AXIS_Z);
+		PRINTF("angular_rate x = %d\r\n", gyro_data.AXIS_X);
+		PRINTF("angular_rate y = %d\r\n", gyro_data.AXIS_Y);
+		PRINTF("angular_rate z = %d\r\n", gyro_data.AXIS_Z);
+		PRINTF("\r\n");
 	}
 		
 }
@@ -403,23 +423,31 @@ void APP_Tick(void) {
 	tBleStatus ret;
 #endif
 	
-	if (!sleep_flag) {
+	if (sleep_flag) {
+		sleep_flag = 1;
+#if ENABLE_DEBUG_WIRELESS
 		SdkEvalLedOff(LED3);
 		SdkEvalLedOff(LED1);
 		SdkEvalLedOff(LED2);
+#endif
+		PRINTF("BlueNRG enter sleeping\r\n");
 		BlueNRG_Sleep(SLEEPMODE_CPU_HALT, 0, 0);
 	}
-	
-	Clock_Wait(10);
 
-	if (button_flag && APP_FLAG(CONNECTED)) {
+	if (timer_irq_flag && APP_FLAG(CONNECTED)) {
 		lsm6dso_xl_data_rate_set(0, LSM6DSO_XL_ODR_52Hz);
 		lsm6dso_gy_data_rate_set(0, LSM6DSO_GY_ODR_52Hz);
 		memset(data_raw_acceleration.u8bit, 0x00, 3 * sizeof(int16_t));
 		lsm6dso_acceleration_raw_get(0, data_raw_acceleration.u8bit);
-		acceleration_mg[0] = LSM6DSO_FROM_FS_2g_TO_mg(data_raw_acceleration.i16bit[0]);
-		acceleration_mg[1] = LSM6DSO_FROM_FS_2g_TO_mg(data_raw_acceleration.i16bit[1]);
-		acceleration_mg[2] = LSM6DSO_FROM_FS_2g_TO_mg(data_raw_acceleration.i16bit[2]);
+		
+		/*Convert the data according to the range*/
+//		acceleration_mg[0] = LSM6DSO_FROM_FS_2g_TO_mg(data_raw_acceleration.i16bit[0]);
+//		acceleration_mg[1] = LSM6DSO_FROM_FS_2g_TO_mg(data_raw_acceleration.i16bit[1]);
+//		acceleration_mg[2] = LSM6DSO_FROM_FS_2g_TO_mg(data_raw_acceleration.i16bit[2]);
+		
+		acceleration_mg[0] = LSM6DSO_FROM_FS_16g_TO_mg(data_raw_acceleration.i16bit[0]);
+		acceleration_mg[1] = LSM6DSO_FROM_FS_16g_TO_mg(data_raw_acceleration.i16bit[1]);
+		acceleration_mg[2] = LSM6DSO_FROM_FS_16g_TO_mg(data_raw_acceleration.i16bit[2]);
 
 		memset(data_raw_angular_rate.u8bit, 0x00, 3 * sizeof(int16_t));
 		lsm6dso_angular_rate_raw_get(0, data_raw_angular_rate.u8bit);
@@ -438,6 +466,13 @@ void APP_Tick(void) {
 		acc_gyro_data_print(RAW_DATA);
 		
 		AccGyro_Update(&acc_data, &gyro_data);
+		Clock_Wait(10);
+	}
+	
+	if (free_fall_notify)
+	{
+		AccEvent_Notify(ACC_FREE_FALL, 2);
+		free_fall_notify = 0;
 	}
 
 #if REQUEST_CONN_PARAM_UPDATE    
@@ -459,9 +494,9 @@ void APP_Tick(void) {
 			Osal_MemCpy(&UUID_Tx.UUID_16, charUuid128_TX, 16);
 			ret = aci_gatt_disc_char_by_uuid(connection_handle, 0x0001, 0xFFFF, UUID_TYPE_128, &UUID_Tx);
 			if (ret != 0)
-			printf("Error in aci_gatt_disc_char_by_uuid() for TX characteristic: 0x%04xr\n", ret);
+			PRINTF("Error in aci_gatt_disc_char_by_uuid() for TX characteristic: 0x%04xr\n", ret);
 			else
-			printf("aci_gatt_disc_char_by_uuid() for TX characteristic --> SUCCESS\r\n");
+			PRINTF("aci_gatt_disc_char_by_uuid() for TX characteristic --> SUCCESS\r\n");
 			APP_FLAG_SET(START_READ_TX_CHAR_HANDLE);
 		}
 	}
@@ -476,9 +511,9 @@ void APP_Tick(void) {
 			Osal_MemCpy(&UUID_Rx.UUID_16, charUuid128_RX, 16);
 			ret = aci_gatt_disc_char_by_uuid(connection_handle, 0x0001, 0xFFFF, UUID_TYPE_128, &UUID_Rx);
 			if (ret != 0)
-			printf("Error in aci_gatt_disc_char_by_uuid() for RX characteristic: 0x%04xr\n", ret);
+			PRINTF("Error in aci_gatt_disc_char_by_uuid() for RX characteristic: 0x%04xr\n", ret);
 			else
-			printf("aci_gatt_disc_char_by_uuid() for RX characteristic --> SUCCESS\r\n");
+			PRINTF("aci_gatt_disc_char_by_uuid() for RX characteristic --> SUCCESS\r\n");
 
 			APP_FLAG_SET(START_READ_RX_CHAR_HANDLE);
 		}
@@ -510,7 +545,6 @@ void APP_Tick(void) {
  * Return         : See file bluenrg1_events.h
  *******************************************************************************/
 void hci_le_connection_complete_event(uint8_t Status, uint16_t Connection_Handle, uint8_t Role, uint8_t Peer_Address_Type, uint8_t Peer_Address[6], uint16_t Conn_Interval, uint16_t Conn_Latency, uint16_t Supervision_Timeout, uint8_t Master_Clock_Accuracy)
-
 {
 	connection_handle = Connection_Handle;
 
@@ -519,11 +553,13 @@ void hci_le_connection_complete_event(uint8_t Status, uint16_t Connection_Handle
 	sensorTimer_expired = false;
 	HAL_VTimerStart_ms(SENSOR_TIMER, ENV_SENSOR_UPDATE_RATE);
 	start_time = HAL_VTimerGetCurrentTime_sysT32();
-	
+
+#if ENABLE_DEBUG_WIRELESS	
 	SdkEvalLedOn(LED1);
 	SdkEvalLedOn(LED3);
 	SdkEvalLedOff(LED2);
-	printf("connection complete!\r\n");
+#endif
+	PRINTF("connection complete!\r\n");
 	
 #if REQUEST_CONN_PARAM_UPDATE
 	APP_FLAG_CLEAR(L2CAP_PARAM_UPD_SENT);
@@ -550,10 +586,12 @@ void hci_disconnection_complete_event(uint8_t Status, uint16_t Connection_Handle
 	APP_FLAG_CLEAR(START_READ_RX_CHAR_HANDLE);
 	APP_FLAG_CLEAR(END_READ_RX_CHAR_HANDLE);
 
+#if ENABLE_DEBUG_WIRELESS
 	SdkEvalLedOn(LED2);
 	SdkEvalLedOn(LED3);	
 	SdkEvalLedOff(LED1);
-	printf("disconnection complete!\r\n");
+#endif
+	PRINTF("disconnection complete!\r\n");
  
 #if ST_OTA_FIRMWARE_UPGRADE_SUPPORT
 	OTA_terminate_connection();
@@ -575,7 +613,7 @@ void aci_gatt_attribute_modified_event(uint16_t Connection_Handle, uint16_t Attr
 	OTA_Write_Request_CB(Connection_Handle, Attr_Handle, Attr_Data_Length, Attr_Data);
 #endif /* ST_OTA_FIRMWARE_UPGRADE_SUPPORT */ 
 
-	printf("attribute modified\r\n");
+	PRINTF("attribute modified\r\n");
 	Attribute_Modified_CB(Attr_Handle, Attr_Data_Length, Attr_Data);
 }
 
@@ -595,7 +633,7 @@ void aci_gatt_notification_event(uint16_t Connection_Handle, uint16_t Attribute_
 	attr_handle = Attribute_Handle;
 	if (attr_handle == tx_handle + 1) {
 		for (int i = 0; i < Attribute_Value_Length; i++)
-		printf("%c", Attribute_Value[i]);
+		PRINTF("%c", Attribute_Value[i]);
 	}
 #endif
 }
@@ -608,15 +646,15 @@ void aci_gatt_notification_event(uint16_t Connection_Handle, uint16_t Attribute_
  * Return         : See file bluenrg1_events.h
  *******************************************************************************/
 void aci_gatt_disc_read_char_by_uuid_resp_event(uint16_t Connection_Handle, uint16_t Attribute_Handle, uint8_t Attribute_Value_Length, uint8_t Attribute_Value[]) {
-	printf("aci_gatt_disc_read_char_by_uuid_resp_event, Connection Handle: 0x%04X\n", Connection_Handle);
+	PRINTF("aci_gatt_disc_read_char_by_uuid_resp_event, Connection Handle: 0x%04X\n", Connection_Handle);
 	if (APP_FLAG(
 					START_READ_TX_CHAR_HANDLE) && !APP_FLAG(END_READ_TX_CHAR_HANDLE)) {
 		tx_handle = Attribute_Handle;
-		printf("TX Char Handle 0x%04X\n", tx_handle);
+		PRINTF("TX Char Handle 0x%04X\n", tx_handle);
 	} else if (APP_FLAG(
 					START_READ_RX_CHAR_HANDLE) && !APP_FLAG(END_READ_RX_CHAR_HANDLE)) {
 		rx_handle = Attribute_Handle;
-		printf("RX Char Handle 0x%04X\n", rx_handle);
+		PRINTF("RX Char Handle 0x%04X\n", rx_handle);
 	}
 }
 
@@ -630,11 +668,11 @@ void aci_gatt_disc_read_char_by_uuid_resp_event(uint16_t Connection_Handle, uint
 void aci_gatt_proc_complete_event(uint16_t Connection_Handle, uint8_t Error_Code) {
 	if (APP_FLAG(
 					START_READ_TX_CHAR_HANDLE) && !APP_FLAG(END_READ_TX_CHAR_HANDLE)) {
-		printf("aci_GATT_PROCEDURE_COMPLETE_Event for START_READ_TX_CHAR_HANDLE \r\n");
+		PRINTF("aci_GATT_PROCEDURE_COMPLETE_Event for START_READ_TX_CHAR_HANDLE \r\n");
 		APP_FLAG_SET(END_READ_TX_CHAR_HANDLE);
 	} else if (APP_FLAG(
 					START_READ_RX_CHAR_HANDLE) && !APP_FLAG(END_READ_RX_CHAR_HANDLE)) {
-		printf("aci_GATT_PROCEDURE_COMPLETE_Event for START_READ_TX_CHAR_HANDLE \r\n");
+		PRINTF("aci_GATT_PROCEDURE_COMPLETE_Event for START_READ_TX_CHAR_HANDLE \r\n");
 		APP_FLAG_SET(END_READ_RX_CHAR_HANDLE);
 	}
 }
@@ -681,11 +719,81 @@ void BUTTON_IrqHandler(void) {
 	if (GPIO_GetITPendingBit(GPIO_Pin_11)) {
 		GPIO_EXTICmd(GPIO_Pin_11, DISABLE);
 		GPIO_ClearITPendingBit(GPIO_Pin_11);
-		button_flag = 0x01 & (~button_flag);
-		sleep_flag = 1;
+		
+		sleep_flag = 0x01 & (~sleep_flag);
+		
+//		button_flag = 0x01 & (~button_flag);
+
+#if !ENABLE_FREE_FALL		
+		timer_irq_flag = 0x01 & (~timer_irq_flag);
+		Clock_Clear();
+#endif
+		
+		
+#if ENABLE_DEBUG_WIRELESS
 		SdkEvalLedOn(LED2);
-		SdkEvalLedOff(LED1);	
-		SdkEvalLedOff(LED3);
+		SdkEvalLedOff(LED1);
+		SdkEvalLedOff(LED3); 
+#endif
+
+#if ENABLE_FREE_FALL
+		if (!xHardwareFeaturePresence.HwFreeFall)
+		{
+			lsm6dso_xl_data_rate_set(0, LSM6DSO_XL_ODR_52Hz);
+			ResetHWPedometer();
+			
+			uint8_t data = 0;
+			lsm6dso_read_reg(0, LSM6DSO_TAP_CFG0, &data, 8);
+			data &= 0xfe;
+			lsm6dso_write_reg(0, LSM6DSO_TAP_CFG0, &data, 8);
+			lsm6dso_read_reg(0, LSM6DSO_TAP_CFG0, &data, 8);
+			PRINTF("TAP_CFG0.LIR = %d\r\n", (data & 0x01));
+			
+			GPIO_EXTICmd(GPIO_Pin_13, ENABLE);
+			EnableHWFreeFall();
+			
+			PRINTF("FreeFall enable\r\n");
+			xHardwareFeaturePresence.HwFreeFall = true;			
+		}
+		else 
+		{
+			DisableHWFreeFall();
+			PRINTF("FreeFall disable\r\n");
+			xHardwareFeaturePresence.HwFreeFall = false;
+		}
+#endif
+
 		GPIO_EXTICmd(GPIO_Pin_11, ENABLE);
 	}
+	
+#if ENABLE_FREE_FALL
+	if (GPIO_GetITPendingBit(GPIO_Pin_13))
+	{
+		GPIO_EXTICmd(GPIO_Pin_13, DISABLE);
+		
+		lsm6dso_all_sources_t all_source;
+		lsm6dso_all_sources_get(0, &all_source);
+		
+		if (all_source.reg.all_int_src.ff_ia)
+		{
+			free_fall_notify = 1;
+			PRINTF("Free Fall event\r\n");
+#if ENABLE_DEBUG_WIRELESS
+			SdkEvalLedOn(LED3);
+			SdkEvalLedOff(LED1);	
+			SdkEvalLedOff(LED2);
+#endif
+		}
+		
+		GPIO_ClearITPendingBit(GPIO_Pin_13);
+		GPIO_EXTICmd(GPIO_Pin_13, ENABLE);
+	}
+#endif
+
 }
+
+void Timer_IrqHandler(void)
+{
+	timer_flag = 1;
+}
+

@@ -41,5 +41,6 @@
 .\server_use_ota_servicemanager\objects\gatt_db.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\SDK_EVAL_I2C.h
 .\server_use_ota_servicemanager\objects\gatt_db.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\SDK_EVAL_Led.h
 .\server_use_ota_servicemanager\objects\gatt_db.o: ..\..\inc\chat.h
+.\server_use_ota_servicemanager\objects\gatt_db.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\server_use_ota_servicemanager\objects\gatt_db.o: ..\..\inc\gatt_db.h
 .\server_use_ota_servicemanager\objects\gatt_db.o: ..\..\..\..\..\Library\hal\inc\clock.h

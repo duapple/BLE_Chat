@@ -36,6 +36,7 @@
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\..\..\..\Library\hal\inc\clock.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\inc\app_state.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\inc\chat.h
+.\server_use_ota_servicemanager\objects\ble_chat_main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\SDK_EVAL_Config.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\USER_Platform_Configuration.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\SDK_EVAL_Com.h
@@ -46,7 +47,6 @@
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\inc\Chat_config.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\..\..\..\Library\Bluetooth_LE\inc\stack_user_cfg.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\..\..\..\Library\BLE_Application\OTA\inc\OTA_btl.h
-.\server_use_ota_servicemanager\objects\ble_chat_main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\LPS22HH.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\math.h
 .\server_use_ota_servicemanager\objects\ble_chat_main.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\LPS22HH_hal.h

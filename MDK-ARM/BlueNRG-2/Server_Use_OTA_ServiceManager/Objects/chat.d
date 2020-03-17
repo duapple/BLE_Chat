@@ -29,6 +29,7 @@
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\inc\gatt_db.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\..\..\..\Library\hal\inc\sleep.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\inc\chat.h
+.\server_use_ota_servicemanager\objects\chat.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\SDK_EVAL_Config.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\USER_Platform_Configuration.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\inc\BlueNRG1_conf.h
@@ -45,6 +46,7 @@
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\SDK_EVAL_Button.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\SDK_EVAL_I2C.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\SDK_EVAL_Led.h
-.\server_use_ota_servicemanager\objects\chat.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdbool.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\..\..\..\Library\BLE_Application\OTA\inc\OTA_btl.h
 .\server_use_ota_servicemanager\objects\chat.o: ..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc\lsm6dso.h
+.\server_use_ota_servicemanager\objects\chat.o: ..\..\..\BLE_SensorDemo\inc\HWAdvanceFeatures.h
+.\server_use_ota_servicemanager\objects\chat.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdlib.h

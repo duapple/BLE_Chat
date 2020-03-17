@@ -666,6 +666,11 @@
               <FileType>1</FileType>
               <FilePath>../../src/gatt_db.c</FilePath>
             </File>
+            <File>
+              <FileName>HWAdvanceFeatures.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\BLE_SensorDemo\src\HWAdvanceFeatures.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -1330,6 +1335,11 @@
               <FileType>1</FileType>
               <FilePath>../../src/gatt_db.c</FilePath>
             </File>
+            <File>
+              <FileName>HWAdvanceFeatures.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\BLE_SensorDemo\src\HWAdvanceFeatures.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -1924,6 +1934,11 @@
               <FileName>gatt_db.c</FileName>
               <FileType>1</FileType>
               <FilePath>../../src/gatt_db.c</FilePath>
+            </File>
+            <File>
+              <FileName>HWAdvanceFeatures.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\BLE_SensorDemo\src\HWAdvanceFeatures.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -2520,6 +2535,11 @@
               <FileType>1</FileType>
               <FilePath>../../src/gatt_db.c</FilePath>
             </File>
+            <File>
+              <FileName>HWAdvanceFeatures.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\BLE_SensorDemo\src\HWAdvanceFeatures.c</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>
@@ -2854,9 +2874,9 @@
             <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>LS_SOURCE=LS_SOURCE_EXTERNAL_32KHZ SMPS_INDUCTOR=SMPS_INDUCTOR_10uH SERVER=1 ST_USE_OTA_SERVICE_MANAGER_APPLICATION=1 BLUENRG2_DEVICE HS_SPEED_XTAL=HS_SPEED_XTAL_32MHZ FORCE_CORE_TO_16MHZ=1</Define>
+              <Define>LS_SOURCE=LS_SOURCE_EXTERNAL_32KHZ SMPS_INDUCTOR=SMPS_INDUCTOR_10uH SERVER=1 ST_USE_OTA_SERVICE_MANAGER_APPLICATION=1 BLUENRG2_DEVICE HS_SPEED_XTAL=HS_SPEED_XTAL_32MHZ FORCE_CORE_TO_16MHZ=1 ENABLE_DEBUG=0 ENABLE_DEBUG_WIRELESS=0</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\inc;..\..\..\..\..\Library\hal\inc;..\..\..\..\..\Library\BlueNRG1_Periph_Driver\inc;..\..\..\..\..\Library\CMSIS\Device\ST\BlueNRG1\Include;..\..\..\..\..\Library\CMSIS\Include;..\..\..\..\..\Library\Bluetooth_LE\inc;..\..\..\..\..\Library\BLE_Application\layers_inc;..\..\..\..\..\Library\BLE_Application\Utils\inc;..\..\..\..\..\Library\BLE_Application\OTA\inc;..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc</IncludePath>
+              <IncludePath>..\..\inc;..\..\..\..\..\Library\hal\inc;..\..\..\..\..\Library\BlueNRG1_Periph_Driver\inc;..\..\..\..\..\Library\CMSIS\Device\ST\BlueNRG1\Include;..\..\..\..\..\Library\CMSIS\Include;..\..\..\..\..\Library\Bluetooth_LE\inc;..\..\..\..\..\Library\BLE_Application\layers_inc;..\..\..\..\..\Library\BLE_Application\Utils\inc;..\..\..\..\..\Library\BLE_Application\OTA\inc;..\..\..\..\..\Library\SDK_Eval_BlueNRG1\inc;..\..\..\BLE_SensorDemo\inc;..\..\..\..\..\Library\SDK_Eval_BlueNRG1\src\VL53L1X_UltraLite\platform;..\..\..\..\..\Library\SDK_Eval_BlueNRG1\src\VL53L1X_UltraLite\core</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -3114,6 +3134,11 @@
               <FileName>gatt_db.c</FileName>
               <FileType>1</FileType>
               <FilePath>../../src/gatt_db.c</FilePath>
+            </File>
+            <File>
+              <FileName>HWAdvanceFeatures.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\..\BLE_SensorDemo\src\HWAdvanceFeatures.c</FilePath>
             </File>
           </Files>
         </Group>

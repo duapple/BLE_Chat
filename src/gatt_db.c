@@ -10,6 +10,14 @@
 
 #include "clock.h"
 
+
+#if ENABLE_DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 /* Store Value into a buffer in Little Endian Format */
 #define STORE_LE_16(buf, val)    ( ((buf)[0] =  (uint8_t) (val)    ) , \
                                    ((buf)[1] =  (uint8_t) (val>>8) ) )
@@ -18,6 +26,8 @@ uint16_t chatServHandle, AccGyroCharHandle, RXCharHandle, TXCharHandle;
 uint16_t chatServHandle_t, TXCharHandle_t, RXCharHandle_t;
 
 extern volatile uint32_t start_time;
+extern uint16_t time_set;
+extern uint8_t timer_irq_flag;
 
 uint8_t buff[20];
 
@@ -65,7 +75,7 @@ uint8_t Add_Chat_Service(void) {
 	
 	Osal_MemCpy(&char_uuid.Char_UUID_128, charUuidRX, 16);
 	ret = aci_gatt_add_char(chatServHandle, UUID_TYPE_128, &char_uuid, 20, CHAR_PROP_WRITE | CHAR_PROP_WRITE_WITHOUT_RESP, ATTR_PERMISSION_NONE, GATT_NOTIFY_ATTRIBUTE_WRITE, 16, 1, &RXCharHandle);
-	if (ret != BLE_STATUS_SUCCESS)
+	if (ret != BLE_STATUS_SUCCESS) 
 		goto fail;
 
 	Osal_MemCpy(&char_uuid.Char_UUID_128, charUuidTX_t, 16);
@@ -73,10 +83,10 @@ uint8_t Add_Chat_Service(void) {
 	if (ret != BLE_STATUS_SUCCESS)
 		goto fail;
 	
-	printf("Chat Service added.\nTX Char Handle %04X, RX Char Handle %04X\n", AccGyroCharHandle, RXCharHandle);
+	PRINTF("Chat Service added.\r\nTX Char Handle %04X, RX Char Handle %04X\r\n", AccGyroCharHandle, RXCharHandle);
 	return BLE_STATUS_SUCCESS;
 
-	fail: printf("Error while adding Chat service.\n");
+	fail: PRINTF("Error while adding Chat service.\r\n");
 	return BLE_STATUS_ERROR;
 
 }
@@ -111,10 +121,10 @@ uint8_t Add_Chat_Service_test(void) {
 	if (ret != BLE_STATUS_SUCCESS)
 		goto fail_t;
 	
-	printf("Chat Service added.\nTX Char Handle %04X, RX Char Handle %04X\n", TXCharHandle_t, RXCharHandle_t);
+	PRINTF("Chat Service added.\r\nTX Char Handle %04X, RX Char Handle %04X\r\n", TXCharHandle_t, RXCharHandle_t);
 	return BLE_STATUS_SUCCESS;
 
-	fail_t: printf("Error while adding Chat service.\n");
+	fail_t: PRINTF("Error while adding Chat service.\r\n");
 	return BLE_STATUS_ERROR;
 }
 
@@ -126,10 +136,11 @@ uint8_t Add_Chat_Service_test(void) {
  * Return         : None.
  *******************************************************************************/
 void Attribute_Modified_CB(uint16_t handle, uint16_t data_length, uint8_t *att_data) {
-	printf("call back complete!\r\n");
+	PRINTF("call back complete!\r\n");
 	if (handle == RXCharHandle + 1) {
-		for (int i = 0; i < data_length; i++)
-			printf("%c", att_data[i]);
+//		for (int i = 0; i < data_length; i++)
+//			PRINTF("%c", att_data[i]);
+		sscanf((const char *)att_data, "%d", (int *)&time_set);
 	} else if (handle == AccGyroCharHandle + 2) {
 		if (att_data[0] == 0x01)
 			APP_FLAG_SET(NOTIFICATIONS_ENABLED);
@@ -140,12 +151,8 @@ void Attribute_Modified_CB(uint16_t handle, uint16_t data_length, uint8_t *att_d
 		if (att_data[0] == 0x01)
 			APP_FLAG_SET(NOTIFICATIONS_ENABLED);
 	} else if (handle == RXCharHandle_t + 1) {
-		for ( int i = 0; i < data_length; i++)
-		printf("%c", att_data[i]);
-		if (strncmp((const char *)att_data, "11", 2) == 0)
-		{
-			printf("modified success\r\n");
-		}
+		timer_irq_flag = 0x01 & (~timer_irq_flag);
+		Clock_Clear();
 	}
 }
 
@@ -157,8 +164,6 @@ void Attribute_Modified_CB(uint16_t handle, uint16_t data_length, uint8_t *att_d
  * @retval tBleStatus      Status
  */
 tBleStatus AccGyro_Update(AxesRaw_t *Acc, AxesRaw_t *Gyro) {
-	
-	printf("!!!!!!!!!!!!acceleration x = %d\r\n", Acc->AXIS_X);
 
 	STORE_LE_16(buff, (getTimestamp()));
 
@@ -175,21 +180,32 @@ tBleStatus AccGyro_Update(AxesRaw_t *Acc, AxesRaw_t *Gyro) {
 	STORE_LE_16(buff + 12, Gyro->AXIS_Z);
 	STORE_LE_16(buff + 14, '\0');
 	
-	uint8_t buff_t[2] = {0};
-	memcpy(buff_t, buff + 2, 1);
-	memcpy(buff_t + 1, buff + 3, 1);
-	
-	int16_t buff_t_data = 0;
-	memcpy(&buff_t_data, buff_t, 2);
-	printf("buff_t_data = %d\r\n", buff_t_data);
-	
-//	uint16_t ms = 1000;
-//	uint32_t count = ms * 32;
-//	while ( count-- );
-
-	Clock_Wait(1);
-	
 	return  aci_gatt_update_char_value(chatServHandle, AccGyroCharHandle, 0, 2 + 3 * 3 * 2, buff);
-
 }
 
+/**
+ * @brief  Send a notification When the DS3 detects one Acceleration event
+ * @param  Command to Send
+ * @retval tBleStatus Status
+ */
+tBleStatus AccEvent_Notify(uint16_t Command, uint8_t dimByte) {
+	tBleStatus ret = 0;
+	uint8_t buff_2[2 + 2];
+	uint8_t buff_3[2 + 3];
+
+	switch (dimByte) {
+	case 2:
+		STORE_LE_16(buff_2, (getTimestamp()));
+		STORE_LE_16(buff_2 + 2, Command);
+		ret = aci_gatt_update_char_value(chatServHandle, TXCharHandle, 0, 2 + 2, buff_2);
+		break;
+	case 3:
+		STORE_LE_16(buff_3, (getTimestamp()));
+		buff_3[2] = 0;
+		STORE_LE_16(buff_3 + 3, Command);
+		ret = aci_gatt_update_char_value(chatServHandle, TXCharHandle, 0, 2 + 3, buff_3);
+		break;
+	}
+	return ret;
+}
+ 

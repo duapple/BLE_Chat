@@ -36,6 +36,7 @@
 ".\server_use_ota_servicemanager\objects\bluenrg1_it.o"
 ".\server_use_ota_servicemanager\objects\chat.o"
 ".\server_use_ota_servicemanager\objects\gatt_db.o"
+".\server_use_ota_servicemanager\objects\hwadvancefeatures.o"
 --library_type=microlib --diag_suppress 6314,6329 --strict --scatter "BlueNRG2.sct"
 --predefine=-DST_USE_OTA_SERVICE_MANAGER_APPLICATION=1 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
 --info sizes --info totals --info unused --info veneers

@@ -145,6 +145,14 @@
 #include "LIS2MDL.h"				// Magnetometer
 #include "LIS2MDL_hal.h"
 
+
+#if ENABLE_DEBUG
+#include <stdio.h>
+#define PRINTF(...) printf(__VA_ARGS__)
+#else
+#define PRINTF(...)
+#endif
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 #define BLE_CHAT_VERSION_STRING "1.0.0" 
@@ -182,14 +190,14 @@ int main(void) {
 	/* BlueNRG-1 stack init */
 	ret = BlueNRG_Stack_Initialization(&BlueNRG_Stack_Init_params);
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("Error in BlueNRG_Stack_Initialization() 0x%02x\r\n", ret);
+		PRINTF("Error in BlueNRG_Stack_Initialization() 0x%02x\r\n", ret);
 		SdkEvalLedOn(LED1);
 		while (1)
 			;
 	}
 
 #if SERVER
-	printf("BlueNRG-1 BLE Chat Server Application (version: %s)\r\n", BLE_CHAT_VERSION_STRING);
+	PRINTF("BlueNRG-1 BLE Chat Server Application (version: %s)\r\n", BLE_CHAT_VERSION_STRING);
 #else
 	printf("BlueNRG-1 BLE Chat Client Application (version: %s)\r\n", BLE_CHAT_VERSION_STRING);
 #endif
@@ -197,7 +205,7 @@ int main(void) {
 	/* Init Chat Device */
 	ret = CHAT_DeviceInit();
 	if (ret != BLE_STATUS_SUCCESS) {
-		printf("CHAT_DeviceInit()--> Failed 0x%02x\r\n", ret);
+		PRINTF("CHAT_DeviceInit()--> Failed 0x%02x\r\n", ret);
 		SdkEvalLedOn(LED1);
 		while (1)
 			;
@@ -208,8 +216,6 @@ int main(void) {
 	/* Configure I2C @ 400 kHz */
 	SdkEvalI2CInit(400000);
 
-//	lsm6dso_xl_data_rate_set(0, LSM6DSO_XL_ODR_OFF);
-//	lsm6dso_gy_data_rate_set(0, LSM6DSO_GY_ODR_OFF);
 //	lsm6dso_pin_mode_set(0, LSM6DSO_OPEN_DRAIN);
 //	lsm6dso_pin_polarity_set(0, LSM6DSO_ACTIVE_LOW);
 	lps22hh_data_rate_set(0, LPS22HH_POWER_DOWN);
@@ -218,20 +224,24 @@ int main(void) {
 	HTS221_Set_PowerDownMode(0, HTS221_SET);
 	GPIO_WriteBit(GPIO_Pin_7, Bit_RESET);
 
-	printf("BLE Stack Initialized \n");
+	PRINTF("BLE Stack Initialized \r\n");
 
 	Sensor_DeviceInit();
+	lsm6dso_xl_data_rate_set(0, LSM6DSO_XL_ODR_OFF);
+	lsm6dso_gy_data_rate_set(0, LSM6DSO_GY_ODR_OFF);
 	
 	Make_Connection();
-	
+
+#if ENABLE_DEBUG_WIRELESS
 	SdkEvalLedOn(LED1);
 	SdkEvalLedOff(LED2);
 	SdkEvalLedOff(LED3);
+#endif
 	
 	/*Button configuration*/
-//	GPIO_EXTICmd(GPIO_Pin_11, DISABLE);
 	SdkEvalPushButtonInit(BUTTON_1);
 	SdkEvalPushButtonIrq(BUTTON_1, IRQ_ON_FALLING_EDGE);
+	Interrupts_EXT_IO_Config();
 	
 	while (1) {
 
@@ -306,18 +316,20 @@ int main(void) {
  	/* Configure Wakeup IO pin */
  	GPIO_InitStructure.GPIO_Mode = GPIO_Input;
  	GPIO_InitStructure.GPIO_HighPwr = DISABLE;
- 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_13;
+ 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_13;
  	GPIO_InitStructure.GPIO_Pull = DISABLE;
  	GPIO_Init(&GPIO_InitStructure);
 
  	/* Configure the Interrupt */
- 	exti_config.GPIO_Pin = GPIO_Pin_11 | GPIO_Pin_13;
- 	exti_config.GPIO_IrqSense = GPIO_IrqSense_Level;
- 	exti_config.GPIO_Event = GPIO_Event_Low;
+ 	exti_config.GPIO_Pin = GPIO_Pin_13;
+ 	exti_config.GPIO_IrqSense = GPIO_IrqSense_Edge;
+ 	exti_config.GPIO_Event = IRQ_ON_FALLING_EDGE;
  	GPIO_EXTIConfig(&exti_config);
-
- 	GPIO_EXTICmd(GPIO_Pin_11 | GPIO_Pin_13, ENABLE);
-
+	
+	 /* Clear pending interrupt */
+//	GPIO_ClearITPendingBit(GPIO_Pin_13);
+	
+ 	GPIO_EXTICmd(GPIO_Pin_13, DISABLE);
  }
 
 #ifdef  USE_FULL_ASSERT

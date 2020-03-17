@@ -95,8 +95,16 @@ void SVC_Handler(void) {
 /**
  * @brief  This function handles SysTick Handler.
  */
+extern uint8_t timer_irq_flag;
+uint16_t time_set = 3000;
 void SysTick_Handler(void) {
 	SysCount_Handler();
+	if (timer_irq_flag && (Clock_Time() == time_set))
+	{
+		timer_irq_flag = 0;
+		Clock_Clear();
+//		Timer_IrqHandler();
+	}
 }
 
 void GPIO_Handler(void) {
